@@ -5,6 +5,8 @@ that can be set to run simultaneously.
 
 Each alarm counts down and plays a configured sound to alert the user.
 
+![](images/multialarms_ss.png)
+
 ## Background
 I wrote MultiAlarms in 2003 for a cinema projectionist
 who needed to run multiple alarms (up to 5) at a time in order to keep track of
