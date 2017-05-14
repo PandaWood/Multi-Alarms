@@ -1,4 +1,4 @@
-package com.mosessoft.multialarms;
+package multialarms;
 
 /*
  * Title:        MultiAlarms
@@ -50,13 +50,13 @@ public class MultiAlarms {
     /** Construct the application */
     public MultiAlarms() {
     
-        try {
-            new com.mosessoft.Splash(
-                new ImageIcon(this.getClass().getResource("splash.png")));                    
-			
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+//        try {
+//            new com.mosessoft.Splash(
+//                new ImageIcon(this.getClass().getResource("splash.png")));
+//
+//        } catch (Exception ex) {
+//            ex.printStackTrace();
+//        }
 
 		initResourceBundle();
 		

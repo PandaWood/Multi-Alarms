@@ -1,4 +1,4 @@
-package com.mosessoft.multialarms;
+package multialarms;
 
 /*
  * Title:        MultiAlarmsGUI
@@ -37,9 +37,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumnModel;
-
-import com.mosessoft.MosesSoft;
-
 
 public class MultiAlarmsGUI extends JFrame {
 
@@ -116,7 +113,7 @@ public class MultiAlarmsGUI extends JFrame {
 
         contentPane.setLayout(new BorderLayout());
         this.setSize(new Dimension(440, 212));
-        this.setTitle(MosesSoft.COMPANY + " - " + MultiAlarms.TITLE);
+        this.setTitle(MultiAlarms.TITLE);
         createMenus();
         setupTable();
         setTimeDisplay();
@@ -199,9 +196,9 @@ public class MultiAlarmsGUI extends JFrame {
         boolean alarmGoneOff = alarm.getGoneOff();
         Color   colColour    = alarmTable.getBackground();
 
-        if ((alarmActive == true) && (alarmGoneOff == true)) {
+        if (alarmActive && alarmGoneOff) {
             colColour = Color.lightGray;
-        } else if ((alarmActive == true) && (alarmGoneOff != true)) {
+        } else if (alarmActive && !alarmGoneOff) {
             colColour = Color.yellow;
         }    // else normal background colour (as initialised)
 
@@ -389,7 +386,7 @@ public class MultiAlarmsGUI extends JFrame {
     /** Help | About action performed */
     public void action_HelpAbout(ActionEvent e) {
     	
-        new com.mosessoft.AboutDialog(this, MultiAlarms.TITLE, 
+        new AboutDialog(this, MultiAlarms.TITLE,
         	MultiAlarms.VERSION,
             	iconTransparent, true).show();
     }

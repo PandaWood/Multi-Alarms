@@ -1,4 +1,4 @@
-package com.mosessoft;
+package multialarms;
 
 
 import java.awt.BorderLayout;

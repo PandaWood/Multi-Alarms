@@ -1,4 +1,4 @@
-package com.mosessoft.multialarms;
+package multialarms;
 
 /*
  * Title:        AlarmTableModel
