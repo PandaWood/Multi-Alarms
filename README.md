@@ -16,14 +16,18 @@ I then found it generally useful but it lay forgotten in the source code cupboar
 as I moved on to other things.
 So I've created this GitHub repository for it, for posterity.
 
-### Build
-The MultiAlarms.jar in dist dir works (I just tried it on MacOS and I used to use it on Windows)
+### Build & Run
 
-But I've started changing the source directory structure from what was an old JBuilder project,
-from memory.
+Requires a JDK on `PATH` (Java 8 or later — tested with OpenJDK 11).
+No external build tool needed; the `Makefile` drives plain `javac` and `jar`.
 
-So this needs some more fixing up and to use some kind of build process.
-I haven't been in the Java world for some time, so this will take some effort.
+```sh
+make            # compile and build dist/MultiAlarms.jar
+make run        # build and launch the GUI
+make clean      # remove build output
+```
 
-I will get to this when I can and anyone interested in helping is very welcome.
+The resulting `dist/MultiAlarms.jar` is a self-contained runnable jar
+(the `kunststoff` look-and-feel library is bundled in), so it can also be
+launched directly with `java -jar dist/MultiAlarms.jar` or by double-clicking.
 

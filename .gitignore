@@ -8,3 +8,7 @@
 *.ear
 .idea/
 out/
+build/
+dist/
+.claude
+
