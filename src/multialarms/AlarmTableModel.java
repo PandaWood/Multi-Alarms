@@ -43,7 +43,7 @@ class AlarmTableModel extends AbstractTableModel {
     public AlarmTableModel() {
 
         for (int x = 0; x < NUM_ALARMS; x++) {
-            alarms[x] = new Alarm(new Integer(x + 1));
+            alarms[x] = new Alarm(Integer.valueOf(x + 1));
         }
 
         startProgressTimer();

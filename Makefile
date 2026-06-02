@@ -25,8 +25,10 @@ SOURCES    := $(shell find $(SRC_DIR) -name '*.java')
 RES_NAMES  := alarm.au bell.gif bell_white.gif splash.png
 RES_DST    := $(addprefix $(PKG_DIR)/,$(RES_NAMES)) $(PKG_DIR)/multialarms.properties
 
-# Java 11 dropped support for -source 1.6, so we target 1.8 (still ample for this code).
-JAVAC_FLAGS := -encoding UTF-8 -source 1.8 -target 1.8 -Xlint:-options
+# --release 8 sets source + target + bootclasspath in one shot; matches the
+# original 1.6/1.8-era code without producing the "bootstrap class path not
+# set" warning that -source/-target alone would.
+JAVAC_FLAGS := -encoding UTF-8 --release 8
 
 .PHONY: all jar compile clean run
 

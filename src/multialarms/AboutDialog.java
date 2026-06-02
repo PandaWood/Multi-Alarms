@@ -58,7 +58,7 @@ public class AboutDialog extends JDialog {
      * Testing
      */
     public static void main(String args[]) {
-        new AboutDialog(null, "AboutTest", "1.0", null, true).show();
+        new AboutDialog(null, "AboutTest", "1.0", null, true).setVisible(true);
     }
 
     public void createCentreArea() {

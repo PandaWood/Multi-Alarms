@@ -388,6 +388,6 @@ public class MultiAlarmsGUI extends JFrame {
     	
         new AboutDialog(this, MultiAlarms.TITLE,
         	MultiAlarms.VERSION,
-            	iconTransparent, true).show();
+            	iconTransparent, true).setVisible(true);
     }
 }
