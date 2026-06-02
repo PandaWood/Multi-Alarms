@@ -8,8 +8,7 @@ package multialarms;
  * @version      1.1
  */
  
-import java.applet.Applet;
-import java.applet.AudioClip;
+import java.io.IOException;
 import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -19,6 +18,12 @@ import java.util.GregorianCalendar;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.BorderFactory;
 import javax.swing.JProgressBar;
 
@@ -51,7 +56,7 @@ public class Alarm {
     private Boolean active;
 
     /** Audio clip to play */
-    private AudioClip audioClip;
+    private Clip audioClip;
 
     /** Sound file to play */
     private URL soundFileURL;
@@ -85,7 +90,21 @@ public class Alarm {
 
         soundFileURL = this.getClass().getResource("alarm.au");
         if (soundFileURL != null) {
-            audioClip = Applet.newAudioClip(soundFileURL);
+            // alarm.au is ULAW-encoded; convert to 16-bit PCM so the audio
+            // system can open a playback line on any platform.
+            try (AudioInputStream rawStream = AudioSystem.getAudioInputStream(soundFileURL)) {
+                AudioFormat src = rawStream.getFormat();
+                AudioFormat pcm = new AudioFormat(
+                        AudioFormat.Encoding.PCM_SIGNED,
+                        src.getSampleRate(), 16, src.getChannels(),
+                        src.getChannels() * 2, src.getSampleRate(), false);
+                try (AudioInputStream pcmStream = AudioSystem.getAudioInputStream(pcm, rawStream)) {
+                    audioClip = AudioSystem.getClip();
+                    audioClip.open(pcmStream);
+                }
+            } catch (UnsupportedAudioFileException | IOException | LineUnavailableException ex) {
+                ex.printStackTrace();
+            }
         }
     }
 
@@ -152,7 +171,8 @@ public class Alarm {
 
         class AlarmRingTask extends TimerTask {
              public void run() {
-                audioClip.play();
+                audioClip.setFramePosition(0);
+                audioClip.start();
             }
         }
         ringSoundTimer.schedule(new AlarmRingTask(), 0, SOUND_LOOP_DELAY);
