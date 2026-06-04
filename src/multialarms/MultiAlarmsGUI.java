@@ -3,32 +3,27 @@ package multialarms;
 /*
  * Title:        MultiAlarmsGUI
  * Description:  The Graphical User Interface and event handling
- * Company:      MosesSoft
  * @author       Peter van der Woude
- * @version      1.0
  */
 
 import java.awt.AWTEvent;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -38,33 +33,24 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumnModel;
 
+@SuppressWarnings("ConstantConditions")
 public class MultiAlarmsGUI extends JFrame {
 
     private JPanel contentPane;
 
-    // menu components
-    private JMenuBar  menuBar        = new JMenuBar();
-    private JMenu     jMenuFile      = new JMenu();
-    private JMenuItem jMenuFileExit  = new JMenuItem();
-    private JMenu     jMenuHelp      = new JMenu();
-    private JMenuItem jMenuHelpAbout = new JMenuItem();
-
     // table components
-    private JScrollPane     alarmScrollPane = new JScrollPane();
-    private JTable          alarmTable      = new JTable();
-    private AlarmTableModel alarmTableModel = new AlarmTableModel();
-
-    /** Image (logo) with white background to use as frame icon */
-    private ImageIcon iconWhite;
+    private final JScrollPane     alarmScrollPane = new JScrollPane();
+    private final JTable          alarmTable      = new JTable();
+    private final AlarmTableModel alarmTableModel = new AlarmTableModel();
 
     /** Image (logo) with transparent background to use on About Dialog */
     private ImageIcon iconTransparent;
 
     /** status bar component (a label) - used to display the time */
-    private JLabel statusBar = new JLabel();
+    private final JLabel statusBar = new JLabel();
 
     /** Timer to update the current 'Time:' display on status bar */
-    private Timer clockTimer = new Timer();
+    private final Timer clockTimer = new Timer();
 
     /** Clock refresh interval - in milliseconds */
     private static final int CLOCK_UPDATE_INTERVAL = 2000;
@@ -90,21 +76,22 @@ public class MultiAlarmsGUI extends JFrame {
      * Image initialization 
      * Extract images/icons objects, ready to display
      */
-    private void Init() throws Exception {
+    private void Init() {
 
+        /* Image (logo) with white background to use as frame icon */
+        ImageIcon iconWhite;
         try {
 
             // ImageIcon will throw error if resource is null (ie. not found)
             // These images will be distributed in a JAR file when released,
             // so this can't really happen, but cater for it, in principle
-            iconWhite       =
+            iconWhite =
                 new ImageIcon(this.getClass().getResource("bell_white.gif"));
             iconTransparent =
                 new ImageIcon(this.getClass().getResource("bell.gif"));
                 
         } catch (NullPointerException ex) {
-            throw new RuntimeException(
-                "Unable to load images 'bell_white.gif', 'bell.gif'");
+            throw new RuntimeException("Unable to load images 'bell_white.gif', 'bell.gif'");
         }
 
         setIconImage(iconWhite.getImage());
@@ -114,13 +101,34 @@ public class MultiAlarmsGUI extends JFrame {
         contentPane.setLayout(new BorderLayout());
         this.setSize(new Dimension(440, 212));
         this.setTitle(MultiAlarms.TITLE);
-        createMenus();
+        registerAboutHandler();
         setupTable();
         setTimeDisplay();
     }
 
+    /**
+     * Hook the AboutDialog into the OS-provided application menu's About item
+     * (e.g. on macOS, "MultiAlarms > About MultiAlarms"). No-op on platforms
+     * without an application About menu.
+     */
+    private void registerAboutHandler() {
+        if (!Desktop.isDesktopSupported()) {
+            return;
+        }
+        Desktop desktop = Desktop.getDesktop();
+        if (desktop.isSupported(Desktop.Action.APP_ABOUT)) {
+            desktop.setAboutHandler(e -> showAbout());
+        }
+    }
+
+    /** Show the About dialog */
+    private void showAbout() {
+        new AboutDialog(this, MultiAlarms.TITLE, MultiAlarms.VERSION,
+                        iconTransparent, true).setVisible(true);
+    }
+
 	/**
-	 * initialise and setup the JTable 
+	 * initialise and set up the JTable
 	 */
     private void setupTable() {
 
@@ -145,34 +153,6 @@ public class MultiAlarmsGUI extends JFrame {
     }
 
 	/**
-	 * Create the menus and menu structure
-	 */
-    private void createMenus() {
-
-        jMenuFile.setText("File");
-        jMenuFileExit.setText("Exit");
-        jMenuFileExit.addActionListener(new ActionListener() {
-
-            public void actionPerformed(ActionEvent e) {
-                action_FileExit(e);
-            }
-        });
-        jMenuHelp.setText("Help");
-        jMenuHelpAbout.setText("About");
-        jMenuHelpAbout.addActionListener(new ActionListener() {
-
-            public void actionPerformed(ActionEvent e) {
-                action_HelpAbout(e);
-            }
-        });
-        jMenuFile.add(jMenuFileExit);
-        jMenuHelp.add(jMenuHelpAbout);
-        menuBar.add(jMenuFile);
-        menuBar.add(jMenuHelp);
-        this.setJMenuBar(menuBar);
-    }
-
-	/**
 	 * Set the widths for each of the JTable columns
 	 */
     private void setColumnWidths() {
@@ -192,13 +172,13 @@ public class MultiAlarmsGUI extends JFrame {
     public void setColBackground(Component component, int row) {
 
         Alarm   alarm        = alarmTableModel.getAlarm(row);
-        boolean alarmActive  = alarm.getActive().booleanValue();
+        boolean alarmActive  = alarm.getActive();
         boolean alarmGoneOff = alarm.getGoneOff();
         Color   colColour    = alarmTable.getBackground();
 
         if (alarmActive && alarmGoneOff) {
             colColour = Color.lightGray;
-        } else if (alarmActive && !alarmGoneOff) {
+        } else if (alarmActive) {
             colColour = Color.yellow;
         }    // else normal background colour (as initialised)
 
@@ -269,13 +249,11 @@ public class MultiAlarmsGUI extends JFrame {
 
         class ProgressRenderer implements TableCellRenderer {
 
-            private Alarm alarm;
-
             public Component getTableCellRendererComponent(JTable table,
                     Object value, boolean isSelected, boolean hasFocus,
                     int row, int col) {
 
-                alarm = alarmTableModel.getAlarm(row);
+                Alarm alarm = alarmTableModel.getAlarm(row);
 
                 return alarm.getProgressBar();
             }
@@ -318,7 +296,7 @@ public class MultiAlarmsGUI extends JFrame {
 
         class ActiveRenderer implements TableCellRenderer {
 
-            private JCheckBox checkBox = new JCheckBox();
+            private final JCheckBox checkBox = new JCheckBox();
 
             public ActiveRenderer() {
                 checkBox.setHorizontalAlignment(JCheckBox.CENTER);
@@ -329,7 +307,7 @@ public class MultiAlarmsGUI extends JFrame {
                     int row, int col) {
 
                 setColBackground(checkBox, row);
-                checkBox.setSelected(((Boolean) value).booleanValue());
+                checkBox.setSelected((Boolean) value);
 
                 return checkBox;
             }
@@ -346,7 +324,7 @@ public class MultiAlarmsGUI extends JFrame {
        
         class ClockTask extends TimerTask {
 
-            private SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm.ss");
+            private final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm.ss");
 
             public void run() {
                 SwingUtilities.invokeLater(new Runnable() {
@@ -357,6 +335,8 @@ public class MultiAlarmsGUI extends JFrame {
             }
         }
 
+        // pad so text isn't clipped by the macOS rounded window corners
+        statusBar.setBorder(BorderFactory.createEmptyBorder(2, 10, 4, 10));
         contentPane.add(statusBar, BorderLayout.SOUTH);
         clockTimer.schedule(new ClockTask(), 0, CLOCK_UPDATE_INTERVAL);
     }
@@ -365,29 +345,14 @@ public class MultiAlarmsGUI extends JFrame {
     // EVENTS
     //--------------------------------------------------------------------------
 
-    /** Overridden so we can exit when window is closed */
+    /* Overridden so we can exit cleanly when the window is closed */
     protected void processWindowEvent(WindowEvent e) {
 
         super.processWindowEvent(e);
 
         if (e.getID() == WindowEvent.WINDOW_CLOSING) {
-        	
-            action_FileExit(null);
+            alarmTableModel.stopTimers();
+            System.exit(0);
         }
-    }
-
-    /** File | Exit action performed */
-    public void action_FileExit(ActionEvent e) {
-    	
-        alarmTableModel.stopTimers();
-        System.exit(0);
-    }
-
-    /** Help | About action performed */
-    public void action_HelpAbout(ActionEvent e) {
-    	
-        new AboutDialog(this, MultiAlarms.TITLE,
-        	MultiAlarms.VERSION,
-            	iconTransparent, true).setVisible(true);
     }
 }

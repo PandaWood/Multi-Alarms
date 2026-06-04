@@ -3,21 +3,15 @@ package multialarms;
 /*
  * Title:        MultiAlarms
  * Description:  Main program module
- * Company:      MosesSoft
  * @author       Peter van der Woude
- * @version      1.11
  */
- 
-import java.awt.Dimension;
-import java.awt.Toolkit;
-import java.util.ResourceBundle;
-
-import javax.swing.ImageIcon;
-import javax.swing.JOptionPane;
-import javax.swing.UIManager;
 
 import com.incors.plaf.kunststoff.KunststoffLookAndFeel;
 import com.incors.plaf.kunststoff.KunststoffTheme;
+
+import javax.swing.*;
+import java.awt.*;
+import java.util.ResourceBundle;
 
 
 
@@ -29,13 +23,11 @@ public class MultiAlarms {
     /** Program version number/string - to be extracted from properties file */
     public static String VERSION = "unknown";
 
-	/** ResourceBundle object used to extract the properties file from .jar */ 
-	private static ResourceBundle resBundle;
-
     public static void initResourceBundle() {
     	
         try {
-            resBundle = ResourceBundle.getBundle("multialarms.multialarms");
+            // ResourceBundle object used to extract the properties file from .jar
+            ResourceBundle resBundle = ResourceBundle.getBundle("multialarms.multialarms");
             VERSION = resBundle.getString("version");
             
         } catch (java.util.MissingResourceException ex) {
@@ -49,14 +41,6 @@ public class MultiAlarms {
 
     /** Construct the application */
     public MultiAlarms() {
-    
-//        try {
-//            new com.mosessoft.Splash(
-//                new ImageIcon(this.getClass().getResource("splash.png")));
-//
-//        } catch (Exception ex) {
-//            ex.printStackTrace();
-//        }
 
 		initResourceBundle();
 		
@@ -83,10 +67,15 @@ public class MultiAlarms {
     /** Main method */
     public static void main(String[] args) {
 
+        // Use the macOS global menu bar instead of an in-window menu bar.
+        // No effect on other platforms. Must be set before any Swing class loads.
+        System.setProperty("apple.laf.useScreenMenuBar", "true");
+        System.setProperty("apple.awt.application.name", TITLE);
+
         try {
 
             KunststoffLookAndFeel.setCurrentTheme(new KunststoffTheme());
-            UIManager.setLookAndFeel(new KunststoffLookAndFeel());        
+            UIManager.setLookAndFeel(new KunststoffLookAndFeel());
         } catch (Exception ex) {
             ex.printStackTrace();
         }

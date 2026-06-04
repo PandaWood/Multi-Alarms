@@ -25,10 +25,10 @@ SOURCES    := $(shell find $(SRC_DIR) -name '*.java')
 RES_NAMES  := alarm.au bell.gif bell_white.gif splash.png
 RES_DST    := $(addprefix $(PKG_DIR)/,$(RES_NAMES)) $(PKG_DIR)/multialarms.properties
 
-# --release 8 sets source + target + bootclasspath in one shot; matches the
-# original 1.6/1.8-era code without producing the "bootstrap class path not
-# set" warning that -source/-target alone would.
-JAVAC_FLAGS := -encoding UTF-8 --release 8
+# --release 11: lifted from 8 to gain java.awt.Desktop.setAboutHandler
+# (Java 9+) used for the macOS application "About" menu integration.
+# Java 8 is EOL anyway; 11 is the lowest LTS.
+JAVAC_FLAGS := -encoding UTF-8 --release 11
 
 .PHONY: all jar compile clean run
 

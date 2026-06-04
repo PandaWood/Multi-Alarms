@@ -3,9 +3,7 @@ package multialarms;
 /*
  * Title:        AlarmTableModel
  * Description:  The Alarm JTable's TableModel implementation (handles data)
- * Company:      MosesSoft
  * @author       Peter van der Woude
- * @version      1.0
  */
  
 import java.awt.event.ActionEvent;
@@ -31,7 +29,7 @@ class AlarmTableModel extends AbstractTableModel {
                                    "Progress", "On" };
 
     /** Alarm array */
-    private Alarm[] alarms = new Alarm[NUM_ALARMS];
+    private final Alarm[] alarms = new Alarm[NUM_ALARMS];
 
     /** Timer to check progress bars */
     private Timer progressTimer;
@@ -43,7 +41,7 @@ class AlarmTableModel extends AbstractTableModel {
     public AlarmTableModel() {
 
         for (int x = 0; x < NUM_ALARMS; x++) {
-            alarms[x] = new Alarm(Integer.valueOf(x + 1));
+            alarms[x] = new Alarm(x + 1);
         }
 
         startProgressTimer();
@@ -80,7 +78,7 @@ class AlarmTableModel extends AbstractTableModel {
     public Object getValueAt(int row, int col) {
 
         Object obj   = null;
-        Alarm  alarm = (Alarm) alarms[row];
+        Alarm  alarm = alarms[row];
 
         switch (col) {
 
@@ -114,26 +112,22 @@ class AlarmTableModel extends AbstractTableModel {
         if ((col == TIME) || (col == DESCRIPTION)) {
 
             // only allow editing if alarm not set
-            Alarm   alarm       = (Alarm) alarms[row];
+            Alarm   alarm       = alarms[row];
             boolean alarmActive =
-                ((Boolean) alarm.getActive()).booleanValue();
+                    alarm.getActive();
 
-            if (alarmActive == false) {
+            if (!alarmActive) {
                 return true;
             }
         }
 
-        if (col == ACTIVE) {
-            return true;
-        }
-
-        return false;
+        return col == ACTIVE;
     }
 
     /** Alarm table implementation of setValueAt */
     public void setValueAt(Object value, int row, int col) {
 
-        Alarm alarm = (Alarm) alarms[row];
+        Alarm alarm = alarms[row];
 
         switch (col) {
 
@@ -175,7 +169,7 @@ class AlarmTableModel extends AbstractTableModel {
 
                         // if alarm has gone off, update the whole row so it can
                         // can be re-painted the 'gone off' colour
-                        if (alarms[x].getGoneOff() == true) {
+                        if (alarms[x].getGoneOff()) {
                             fireTableRowsUpdated(x, x);
                         }
                     }

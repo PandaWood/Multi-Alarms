@@ -1,9 +1,6 @@
 package multialarms;
 
-
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.Frame;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 
 import javax.swing.Box;
@@ -14,20 +11,17 @@ import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
-
 /*
  * Title:       AboutDialog
  * Copyright:   Copyright (c) 2002
- * Company:     MosesSoft
  * @author      Peter van der Woude
- * @version     1.0
  */
 public class AboutDialog extends JDialog {
 
     JPanel            mainPanel = new JPanel();
-    private String    title;
-    private ImageIcon icon;
-    private String    version;
+    private final String    title;
+    private final ImageIcon icon;
+    private final String    version;
 
     public AboutDialog(Frame frame, String title, String version,
                        ImageIcon icon, boolean modal) {
@@ -48,16 +42,9 @@ public class AboutDialog extends JDialog {
     }
 
     /**
-     * no-arg constructor
-     */
-    private AboutDialog() {
-        this(null, "", "", null, false);
-    }
-
-    /**
      * Testing
      */
-    public static void main(String args[]) {
+    public static void main(String[] args) {
         new AboutDialog(null, "AboutTest", "1.0", null, true).setVisible(true);
     }
 
@@ -72,48 +59,39 @@ public class AboutDialog extends JDialog {
         authorLabel.setAlignmentX(CENTER_ALIGNMENT);
         centrePanel.add(authorLabel, null);
 
-        JLabel copyrightLabel = new JLabel("version " + version);
-
-        copyrightLabel.setAlignmentX(CENTER_ALIGNMENT);
-        centrePanel.add(copyrightLabel, null);
+        JLabel versionLabel = new JLabel("version " + version);
+        versionLabel.setFont(new Font("Dialog", Font.PLAIN, 11));
+        versionLabel.setForeground(Color.GRAY);
+        versionLabel.setAlignmentX(CENTER_ALIGNMENT);
+        centrePanel.add(versionLabel, null);
         centrePanel.add(Box.createRigidArea(new Dimension(0, 5)));
 
         // obtain and position the program icon
         if (icon != null) {
-            JLabel iconLabel = new JLabel(icon);
+            // source bell.gif is 436x364 — scale to fit the dialog, preserving aspect ratio
+            Image scaled = icon.getImage().getScaledInstance(120, -1, Image.SCALE_SMOOTH);
+            JLabel iconLabel = new JLabel(new ImageIcon(scaled));
 
             iconLabel.setAlignmentX(CENTER_ALIGNMENT);
             centrePanel.add(iconLabel, null);
         }
 
-        centrePanel.add(Box.createRigidArea(new Dimension(0, 5)));
-
-        JLabel freewareLabel = new JLabel(title + " is freeware");
-
-        freewareLabel.setFont(new java.awt.Font("Dialog", 2, 14));
-        freewareLabel.setAlignmentX(CENTER_ALIGNMENT);
-        centrePanel.add(freewareLabel, null);
         mainPanel.add(centrePanel, BorderLayout.CENTER);
     }
 
     public void createTitleArea() {
 
-        JLabel companyLabel = new JLabel("MosesSoft");
-        JLabel titleLabel   = new JLabel(title);
-
-        companyLabel.setFont(new java.awt.Font("Dialog", 2, 14));
-        titleLabel.setFont(new java.awt.Font("Dialog", 1, 24));
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new java.awt.Font("Dialog", Font.BOLD, 24));
 
         JPanel northPanel = new JPanel();
-
-        northPanel.add(companyLabel, null);
         northPanel.add(titleLabel, null);
         mainPanel.add(northPanel, BorderLayout.NORTH);
     }
 
     public void createSouthArea() {
 
-        JPanel  southPanel  = new JPanel();
+        JPanel  southPanel  = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton closeButton = new JButton("Close");
 
         closeButton.addActionListener(new java.awt.event.ActionListener() {
@@ -129,14 +107,17 @@ public class AboutDialog extends JDialog {
     /**
      * init method
      */
-    void createDialog(Frame parentFrame) throws Exception {
+    void createDialog(Frame parentFrame) {
 
         mainPanel.setLayout(new BorderLayout());
         createTitleArea();
         createCentreArea();
         createSouthArea();
-        mainPanel.setMinimumSize(new Dimension(250, 300));
-        mainPanel.setPreferredSize(new Dimension(250, 300));
+        // pack() will size to content; pad up to a minimum width so the
+        // dialog doesn't look cramped when the content is narrow.
+        Dimension natural = mainPanel.getPreferredSize();
+        mainPanel.setPreferredSize(
+                new Dimension(Math.max(natural.width, 250), natural.height));
         getContentPane().add(mainPanel);
 
         int xPos = 0;

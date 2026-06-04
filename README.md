@@ -5,7 +5,7 @@ that can be set to run simultaneously.
 
 Each alarm counts down and plays a configured sound to alert the user.
 
-![](images/multialarms_ss.png)
+![](images/multialarms_ss_mac.png)
 
 ## Background
 I wrote MultiAlarms in 2003 for a cinema projectionist

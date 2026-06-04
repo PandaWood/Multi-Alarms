@@ -3,9 +3,7 @@ package multialarms;
 /*
  * Title:        Alarm
  * Description:  Class representing an Alarm
- * Company:      MosesSoft
  * @author       Peter van der Woude
- * @version      1.1
  */
  
 import java.io.IOException;
@@ -38,7 +36,7 @@ public class Alarm {
     private static final int SOUND_LOOP_DELAY = 900;
 
     /** Alarm progress bar */
-    private JProgressBar progressBar = new JProgressBar();
+    private final JProgressBar progressBar = new JProgressBar();
 
     /** The main timer that determines when the alarm goes off */
     private Timer alarmTimer = new Timer();
@@ -50,16 +48,13 @@ public class Alarm {
     private Date alarmStartTime;
 
     /** Alarm number reference */
-    private Integer alarmNum;
+    private final Integer alarmNum;
 
     /** Boolean to indicate active status of the alarm */
     private Boolean active;
 
     /** Audio clip to play */
     private Clip audioClip;
-
-    /** Sound file to play */
-    private URL soundFileURL;
 
     /** Description of the alarm (supplied by user) */
     private String description;
@@ -73,9 +68,6 @@ public class Alarm {
     /** String to formulate time - re-used for efficiency */
     StringBuffer timeToGo = new StringBuffer();
 
-    /** Private constructor to prevent object creation other than 1-arg */
-    private Alarm() {}
-
     /** 1-arg constructor */
     public Alarm(Integer alarmNum) {
 
@@ -88,7 +80,8 @@ public class Alarm {
         progressBar.setStringPainted(true);
         progressBar.setString("");
 
-        soundFileURL = this.getClass().getResource("alarm.au");
+        /* Sound file to play */
+        URL soundFileURL = this.getClass().getResource("alarm.au");
         if (soundFileURL != null) {
             // alarm.au is ULAW-encoded; convert to 16-bit PCM so the audio
             // system can open a playback line on any platform.
@@ -253,7 +246,7 @@ public class Alarm {
             SimpleDateFormat dayFormat = new SimpleDateFormat("E");
             String dayString = dayFormat.format(new Date());
             
-            boolean tomorrow = (alarmString.indexOf(dayString) == -1);
+            boolean tomorrow = (!alarmString.contains(dayString));
             
             if (alarmString.length() <= 6) {
                 // in this case, the day string has been deleted - assume is today
@@ -335,17 +328,17 @@ public class Alarm {
      */
     public String toString() {
 
-        StringBuffer alarmString = new StringBuffer("[" + alarmNum + "]->");
+        StringBuilder alarmString = new StringBuilder("[" + alarmNum + "]->");
 
         if (alarmStartTime != null) {
-            alarmString.append(" started[" + timeFormat.format(alarmStartTime) + "]");
+            alarmString.append(" started[").append(timeFormat.format(alarmStartTime)).append("]");
         }
 
         if (alarmGoOffTime != null) {
-            alarmString.append(" set[" + timeFormat.format(alarmGoOffTime) + "]");
+            alarmString.append(" set[").append(timeFormat.format(alarmGoOffTime)).append("]");
         }
 
-        alarmString.append(" goneOff=" + goneOff);
+        alarmString.append(" goneOff=").append(goneOff);
 
         return alarmString.toString();
     }
