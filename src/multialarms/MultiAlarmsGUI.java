@@ -99,11 +99,19 @@ public class MultiAlarmsGUI extends JFrame {
         contentPane = (JPanel) this.getContentPane();
 
         contentPane.setLayout(new BorderLayout());
-        this.setSize(new Dimension(440, 212));
         this.setTitle(MultiAlarms.TITLE);
         registerAboutHandler();
         setupTable();
         setTimeDisplay();
+
+        // Snap the window to its content rather than a hard-coded height: pack()
+        // sizes it to fit the grid (header + rows) plus the status bar exactly,
+        // then we restore the established 440px width. The old fixed 212px height
+        // left a leftover band below the last row whose size varied with each
+        // platform's font metrics -- larger on Linux than on macOS. Deriving the
+        // height from the real row metrics keeps that gap consistent everywhere.
+        pack();
+        setSize(440, getHeight());
     }
 
     /**
@@ -133,15 +141,19 @@ public class MultiAlarmsGUI extends JFrame {
     private void setupTable() {
 
         // alarm table properties
-        alarmTable.setPreferredSize(new Dimension(200, 125));
         alarmTable.setCellSelectionEnabled(true);
         alarmTable.setModel(alarmTableModel);
         alarmTable.setRowHeight(25);
         setColumnWidths();
 
-        // alarm table's scrollpane
-        alarmScrollPane.setPreferredSize(new Dimension(150, 200));
+        // Size the scroll pane's viewport to exactly the table's rows so the
+        // frame can be packed snugly around the grid (see Init()). Deriving the
+        // height from the real row height keeps it consistent across platforms,
+        // rather than a hard-coded pixel height whose leftover gap varies with
+        // each platform's font metrics.
         alarmScrollPane.setViewportView(alarmTable);
+        alarmTable.setPreferredScrollableViewportSize(new Dimension(200,
+                alarmTable.getRowHeight() * alarmTableModel.getRowCount()));
         contentPane.add(alarmScrollPane, BorderLayout.CENTER);
 
         // setup and initialise table's column renderers/editors
@@ -321,10 +333,10 @@ public class MultiAlarmsGUI extends JFrame {
      * Setup and initialise the time display in status bar
      */
     private void setTimeDisplay() {
-       
-        class ClockTask extends TimerTask {
 
-            private final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm.ss");
+        final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm.ss");
+
+        class ClockTask extends TimerTask {
 
             public void run() {
                 SwingUtilities.invokeLater(new Runnable() {
@@ -337,6 +349,13 @@ public class MultiAlarmsGUI extends JFrame {
 
         // pad so text isn't clipped by the macOS rounded window corners
         statusBar.setBorder(BorderFactory.createEmptyBorder(2, 10, 4, 10));
+
+        // Seed the real time before the window is packed (see Init()). The clock
+        // Timer below only fires after construction, so without this the status
+        // bar would be empty at pack() time and reserve too little height -- the
+        // grid would then be squeezed when the time first appears.
+        statusBar.setText("Time: " + dateFormat.format(new Date()));
+
         contentPane.add(statusBar, BorderLayout.SOUTH);
         clockTimer.schedule(new ClockTask(), 0, CLOCK_UPDATE_INTERVAL);
     }
