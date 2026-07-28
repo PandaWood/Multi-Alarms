@@ -49,7 +49,9 @@ $(PKG_DIR)/%: $(RES_DIR)/%
 	@mkdir -p $(PKG_DIR)
 	cp $< $@
 
-$(PKG_DIR)/multialarms.properties: $(SRC_DIR)/multialarms/multialarms.properties
+# Holds the version string, read at runtime via ResourceBundle. Lives at the
+# repo root rather than in src/ so the source tree is Java only.
+$(PKG_DIR)/multialarms.properties: multialarms.properties
 	@mkdir -p $(PKG_DIR)
 	cp $< $@
 
