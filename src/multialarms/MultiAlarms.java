@@ -31,9 +31,9 @@ public class MultiAlarms {
             VERSION = resBundle.getString("version");
             
         } catch (java.util.MissingResourceException ex) {
-            String message = "The file 'multialarms.properties' was not found" +
-                             " in archive." +
-                             "\nPlease obtain a valid version of " + TITLE + ".jar";
+            String message = """
+                    The file 'multialarms.properties' was not found in archive.
+                    Please obtain a valid version of %s.jar""".formatted(TITLE);
             JOptionPane.showMessageDialog(null, message, TITLE,
                                           JOptionPane.ERROR_MESSAGE);
         }

@@ -5,14 +5,16 @@ package multialarms;
  * Description:  Class representing an Alarm
  * @author       Peter van der Woude
  */
- 
+
 import java.io.IOException;
 import java.net.URL;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -24,13 +26,19 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.BorderFactory;
 import javax.swing.JProgressBar;
+import javax.swing.SwingUtilities;
 
 
 public class Alarm {
 
-    /** 24-hour time format for editing alarm go-off time */
-    private static final SimpleDateFormat timeFormat =
-        new SimpleDateFormat("E HH:mm");
+    /**
+     * 24-hour time format for displaying and editing the alarm go-off time.
+     * The day name is an optional section, so both "Tue 14:30" and a bare
+     * "14:30" (user deleted the day) parse. Locale is pinned so the format
+     * doesn't shift with the machine's regional settings.
+     */
+    private static final DateTimeFormatter TIME_FORMAT =
+        DateTimeFormatter.ofPattern("[E ]HH:mm", Locale.ENGLISH);
 
     /** The delay in milliseconds for the alarm sound */
     private static final int SOUND_LOOP_DELAY = 900;
@@ -42,16 +50,16 @@ public class Alarm {
     private Timer alarmTimer = new Timer();
 
     /** Date/Time the alarm is to go off */
-    private Date alarmGoOffTime;
+    private LocalDateTime alarmGoOffTime;
 
     /** Date/Time the alarm was started/initiated */
-    private Date alarmStartTime;
+    private LocalDateTime alarmStartTime;
 
     /** Alarm number reference */
     private final Integer alarmNum;
 
-    /** Boolean to indicate active status of the alarm */
-    private Boolean active;
+    /** Indicates active status of the alarm */
+    private boolean active;
 
     /** Audio clip to play */
     private Clip audioClip;
@@ -62,18 +70,15 @@ public class Alarm {
     /** The timer used to loop sound when alarm goes off */
     private Timer ringSoundTimer;
 
-    /** Boolean to determine alarm goneOff status */
+    /** Determines alarm goneOff status */
     private boolean goneOff = false;
-
-    /** String to formulate time - re-used for efficiency */
-    StringBuffer timeToGo = new StringBuffer();
 
     /** 1-arg constructor */
     public Alarm(Integer alarmNum) {
 
         this.alarmNum       = alarmNum;
-        this.alarmGoOffTime = new Date();   // default goOff time to now
-        active              = Boolean.FALSE;
+        this.alarmGoOffTime = LocalDateTime.now();   // default goOff time to now
+        active              = false;
         description         = "alarm " + alarmNum;
 
         progressBar.setBorder(BorderFactory.createLoweredBevelBorder());
@@ -125,12 +130,12 @@ public class Alarm {
      */
     private synchronized void start() {
 
-        alarmStartTime = new Date();
+        alarmStartTime = LocalDateTime.now();
         System.out.println("start() - " + this);
 
         // (48*60*60*1000=86,400,000 is maximum possible milliseconds
-        progressBar.setMaximum((int) (alarmGoOffTime.getTime()
-                                      - alarmStartTime.getTime()));
+        Duration total = Duration.between(alarmStartTime, alarmGoOffTime);
+        progressBar.setMaximum((int) total.toMillis());
         progressBar.setValue(0);
 
         goneOff = false;
@@ -140,45 +145,44 @@ public class Alarm {
                                     public void run() {
                                         goOff();
                                     }
-                                }, alarmGoOffTime);
+                                }, Math.max(0, total.toMillis()));
 
         } catch (IllegalStateException ex) {
             System.out.println(ex.getMessage());
-            active = Boolean.FALSE;
+            active = false;
         }
     }
 
     /** the alarm 'ring' event */
     private synchronized void goOff() {
-    	
+
         goneOff = true;
         System.out.println("goOff() - " + this);
 
-        progressBar.setString("Ring, ring...");
+        // this runs on the Timer thread, so bounce the Swing update to the EDT
+        SwingUtilities.invokeLater(() -> progressBar.setString("Ring, ring..."));
 
         if (audioClip == null) {
             return;
         }
 
         ringSoundTimer = new Timer();
-
-        class AlarmRingTask extends TimerTask {
-             public void run() {
-                audioClip.setFramePosition(0);
-                audioClip.start();
-            }
-        }
-        ringSoundTimer.schedule(new AlarmRingTask(), 0, SOUND_LOOP_DELAY);
+        ringSoundTimer.schedule(new TimerTask() {
+                                    public void run() {
+                                        audioClip.setFramePosition(0);
+                                        audioClip.start();
+                                    }
+                                }, 0, SOUND_LOOP_DELAY);
     }
 
     /** return number of this alarm */
-    public Integer getAlarmNum() {    	
+    public Integer getAlarmNum() {
         return alarmNum;
     }
 
     /** return the alarm goOff time formatted as String */
-    public String getTimeString() {    	
-        return timeFormat.format(alarmGoOffTime);
+    public String getTimeString() {
+        return alarmGoOffTime.format(TIME_FORMAT);
     }
 
     /**
@@ -186,41 +190,29 @@ public class Alarm {
      * This method is synchronized since UpdateProgressTask thread may call at
      * same time as thread on the even dispatch queue
      */
-    public synchronized Boolean getActive() {    	
+    public synchronized boolean isActive() {
         return active;
     }
 
-    /**
-     * Determine progress of alarm in milliseconds from time started.
-     * This is used by the progress bar (after alarmGoOffTime is used as maximum)
-     * to determine percentage complete.
-     */
-    private int getTimeElapsed() {
-
-        // the int won't overflow because we only use time within one 48hr
-        // period (48*60*60*1000=86,400,000 is maximum possible milliseconds)
-        return (int)(System.currentTimeMillis() - alarmStartTime.getTime());
-    }
-
     /** Return description of the alarm */
-    public String getDescription() {    	
+    public String getDescription() {
         return description;
     }
 
     /** Set description of the alarm */
     public void setDescription(String description) {
-    	
+
         if (description != null) {
             this.description = description;
         }
     }
 
     /** Set the active status of the alarm and react accordingly */
-    public synchronized void setActive(Boolean active) {
+    public synchronized void setActive(boolean active) {
 
         this.active = active;
 
-        if (this.active.equals(Boolean.TRUE)) {
+        if (active) {
             start();
         } else {
             stop();
@@ -228,89 +220,51 @@ public class Alarm {
     }
 
     /**
-     * Parse String in format HH:mm
-     * First, work out today's date (otherwise it defaults to epoch 1970)
-     * Then, set time given (typed in by user)
+     * Parse String in format "E HH:mm", where the day name is optional.
+     * The date is today, unless that time has already passed - in which case
+     * the alarm is for the same time tomorrow.
      */
     public void setTimeString(String alarmString) {
 
         try {
-            Calendar dayCal   = new GregorianCalendar();
-            Calendar timesetCal = new GregorianCalendar();
-            Calendar calFinal   = new GregorianCalendar();
+            LocalDateTime goOff = LocalDate.now().atTime(
+                    LocalTime.parse(alarmString.trim(), TIME_FORMAT));
 
-            // get today's date
-            dayCal.setTime(new Date());
-            
-            // set to today or tomorrow?
-            SimpleDateFormat dayFormat = new SimpleDateFormat("E");
-            String dayString = dayFormat.format(new Date());
-            
-            boolean tomorrow = (!alarmString.contains(dayString));
-            
-            if (alarmString.length() <= 6) {
-                // in this case, the day string has been deleted - assume is today
-                tomorrow = false;
-            }
-            
-            if (tomorrow) {
-                dayCal.add(Calendar.DATE, 1);
+            if (!goOff.isAfter(LocalDateTime.now())) {
+                goOff = goOff.plusDays(1);
             }
 
-            // get the time that was given (albeit with 1970 year)
-            Date timesetDate = timeFormat.parse(alarmString);
-
-            timesetCal.setTime(timesetDate);
-
-            // now we have a new time and the current date, join them both
-            calFinal.set(dayCal.get(Calendar.YEAR),    // set to today
-                         dayCal.get(Calendar.MONTH),
-                         dayCal.get(Calendar.DATE),
-                         timesetCal.get(Calendar.HOUR_OF_DAY),  // set new time
-                         timesetCal.get(Calendar.MINUTE),
-                         0);    // assume beginng of the minute (ie. no seconds)
-
-            alarmGoOffTime = calFinal.getTime();
-        } catch (ParseException ex) {
+            alarmGoOffTime = goOff;
+        } catch (DateTimeParseException ex) {
             System.out.println("setTimeString() - " + ex.getMessage());
         }
     }
 
     /** External access to the progress bar */
-    public JProgressBar getProgressBar() {    	
+    public JProgressBar getProgressBar() {
         return progressBar;
     }
 
     /** Update progress bar */
     public synchronized void updateProgressBar() {
 
-        if (active.equals(Boolean.FALSE)) {
+        if (!active) {
             return;
         }
 
-        progressBar.setValue(getTimeElapsed());
+        // the int won't overflow because we only use time within one 48hr
+        // period (48*60*60*1000=86,400,000 is maximum possible milliseconds)
+        progressBar.setValue(
+                (int) Duration.between(alarmStartTime, LocalDateTime.now()).toMillis());
 
-        long timeLeft = alarmGoOffTime.getTime() - System.currentTimeMillis();
-        if (timeLeft <= 0 ) {
+        Duration left = Duration.between(LocalDateTime.now(), alarmGoOffTime);
+        if (left.isNegative() || left.isZero()) {
             return;     // this will occur if the alarm is completed (gone off)
         }
 
-        int timeInSeconds = (int)(timeLeft / 1000);
-
-        // calculate time to go in hours, minutes and seconds
-        int hours = timeInSeconds / 3600;
-        timeInSeconds = timeInSeconds - (hours * 3600);
-        int minutes = timeInSeconds / 60;
-        timeInSeconds = timeInSeconds - (minutes * 60);
-        int seconds = timeInSeconds;
-
-        timeToGo.setLength(0);
-        if (hours > 0) {    // only print hours if necessary
-            timeToGo.append(hours).append("h ");
-        }
-        timeToGo.append(minutes).append("m ").append(seconds).append("s left");
-
-        progressBar.setString(timeToGo.toString());
+        progressBar.setString(left.toHours() > 0    // only print hours if necessary
+                ? "%dh %dm %ds left".formatted(left.toHours(), left.toMinutesPart(), left.toSecondsPart())
+                : "%dm %ds left".formatted(left.toMinutesPart(), left.toSecondsPart()));
     }
 
     /**
@@ -322,20 +276,20 @@ public class Alarm {
         return goneOff;
     }
 
-    /** 
-     * String representation of the alarm 
-     * Used for debugging and System.out output 
+    /**
+     * String representation of the alarm
+     * Used for debugging and System.out output
      */
     public String toString() {
 
         StringBuilder alarmString = new StringBuilder("[" + alarmNum + "]->");
 
         if (alarmStartTime != null) {
-            alarmString.append(" started[").append(timeFormat.format(alarmStartTime)).append("]");
+            alarmString.append(" started[").append(alarmStartTime.format(TIME_FORMAT)).append("]");
         }
 
         if (alarmGoOffTime != null) {
-            alarmString.append(" set[").append(timeFormat.format(alarmGoOffTime)).append("]");
+            alarmString.append(" set[").append(alarmGoOffTime.format(TIME_FORMAT)).append("]");
         }
 
         alarmString.append(" goneOff=").append(goneOff);

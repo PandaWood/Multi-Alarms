@@ -14,10 +14,9 @@ import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.WindowEvent;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
@@ -28,12 +27,11 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumnModel;
 
-@SuppressWarnings("ConstantConditions")
 public class MultiAlarmsGUI extends JFrame {
 
     private JPanel contentPane;
@@ -50,10 +48,17 @@ public class MultiAlarmsGUI extends JFrame {
     private final JLabel statusBar = new JLabel();
 
     /** Timer to update the current 'Time:' display on status bar */
-    private final Timer clockTimer = new Timer();
+    private Timer clockTimer;
 
     /** Clock refresh interval - in milliseconds */
     private static final int CLOCK_UPDATE_INTERVAL = 2000;
+
+    /** Format of the clock in the status bar */
+    private static final DateTimeFormatter CLOCK_FORMAT =
+        DateTimeFormatter.ofPattern("HH:mm.ss");
+
+    /** Font for the (bold, oversized) alarm number column */
+    private static final Font ALARM_NUM_FONT = new Font("Sans Serif", Font.BOLD, 16);
 
     /** Construct the frame */
     public MultiAlarmsGUI() {
@@ -72,27 +77,21 @@ public class MultiAlarmsGUI extends JFrame {
         }
     }
 
-    /** 
-     * Image initialization 
+    /**
+     * Image initialization
      * Extract images/icons objects, ready to display
      */
     private void Init() {
 
-        /* Image (logo) with white background to use as frame icon */
-        ImageIcon iconWhite;
-        try {
+        // These images will be distributed in a JAR file when released,
+        // so a missing resource can't really happen, but cater for it in principle
+        ImageIcon iconWhite = new ImageIcon(Objects.requireNonNull(
+                this.getClass().getResource("bell_white.gif"),
+                "Unable to load image 'bell_white.gif'"));
 
-            // ImageIcon will throw error if resource is null (ie. not found)
-            // These images will be distributed in a JAR file when released,
-            // so this can't really happen, but cater for it, in principle
-            iconWhite =
-                new ImageIcon(this.getClass().getResource("bell_white.gif"));
-            iconTransparent =
-                new ImageIcon(this.getClass().getResource("bell.gif"));
-                
-        } catch (NullPointerException ex) {
-            throw new RuntimeException("Unable to load images 'bell_white.gif', 'bell.gif'");
-        }
+        iconTransparent = new ImageIcon(Objects.requireNonNull(
+                this.getClass().getResource("bell.gif"),
+                "Unable to load image 'bell.gif'"));
 
         setIconImage(iconWhite.getImage());
 
@@ -144,7 +143,6 @@ public class MultiAlarmsGUI extends JFrame {
         alarmTable.setCellSelectionEnabled(true);
         alarmTable.setModel(alarmTableModel);
         alarmTable.setRowHeight(25);
-        setColumnWidths();
 
         // Size the scroll pane's viewport to exactly the table's rows so the
         // frame can be packed snugly around the grid (see Init()). Deriving the
@@ -156,25 +154,19 @@ public class MultiAlarmsGUI extends JFrame {
                 alarmTable.getRowHeight() * alarmTableModel.getRowCount()));
         contentPane.add(alarmScrollPane, BorderLayout.CENTER);
 
-        // setup and initialise table's column renderers/editors
-        initAlarmCol();
-        initDescriptionCol();
-        initTimeCol();
-        initProgressCol();
-        initActiveCol();
-    }
+        // setup and initialise the table's column widths and renderers
+        TableColumnModel cols = alarmTable.getColumnModel();
 
-	/**
-	 * Set the widths for each of the JTable columns
-	 */
-    private void setColumnWidths() {
+        cols.getColumn(AlarmTableModel.ALARM).setPreferredWidth(25);
+        cols.getColumn(AlarmTableModel.TIME).setPreferredWidth(45);
+        cols.getColumn(AlarmTableModel.PROGRESS).setPreferredWidth(100);
+        cols.getColumn(AlarmTableModel.ACTIVE).setPreferredWidth(25);
 
-        TableColumnModel alarmColModel = alarmTable.getColumnModel();
-
-        alarmColModel.getColumn(AlarmTableModel.ALARM).setPreferredWidth(25);
-        alarmColModel.getColumn(AlarmTableModel.TIME).setPreferredWidth(45);
-        alarmColModel.getColumn(AlarmTableModel.PROGRESS).setPreferredWidth(100);
-        alarmColModel.getColumn(AlarmTableModel.ACTIVE).setPreferredWidth(25);
+        cols.getColumn(AlarmTableModel.ALARM).setCellRenderer(new StateRenderer(ALARM_NUM_FONT));
+        cols.getColumn(AlarmTableModel.DESCRIPTION).setCellRenderer(new StateRenderer(null));
+        cols.getColumn(AlarmTableModel.TIME).setCellRenderer(new StateRenderer(null));
+        cols.getColumn(AlarmTableModel.PROGRESS).setCellRenderer(new ProgressRenderer());
+        cols.getColumn(AlarmTableModel.ACTIVE).setCellRenderer(new ActiveRenderer());
     }
 
     /**
@@ -184,7 +176,7 @@ public class MultiAlarmsGUI extends JFrame {
     public void setColBackground(Component component, int row) {
 
         Alarm   alarm        = alarmTableModel.getAlarm(row);
-        boolean alarmActive  = alarm.getActive();
+        boolean alarmActive  = alarm.isActive();
         boolean alarmGoneOff = alarm.getGoneOff();
         Color   colColour    = alarmTable.getBackground();
 
@@ -198,154 +190,75 @@ public class MultiAlarmsGUI extends JFrame {
     }
 
     /**
-     * Setup and initialise the ALARM table column
+     * Text renderer that tints the cell background according to the alarm's
+     * state. Used by the ALARM, DESCRIPTION and TIME columns, which differ only
+     * in whether they override the font.
      */
-    public void initAlarmCol() {
+    private class StateRenderer extends DefaultTableCellRenderer {
 
-        class AlarmNumRenderer extends DefaultTableCellRenderer {
+        private final Font font;
 
-            public AlarmNumRenderer() {
-                setHorizontalAlignment(CENTER);
-            }
-
-            public Component getTableCellRendererComponent(JTable table,
-                    Object value, boolean isSelected, boolean hasFocus,
-                    int row, int col) {
-
-                setColBackground(this, row);
-                setValue(value);
-
-                return this;
-            }
-
-            public void setValue(Object value) {
-                super.setValue(value);
-                setFont(new Font("Sans Serif", Font.BOLD, 16));
-            }
+        StateRenderer(Font font) {
+            this.font = font;
+            setHorizontalAlignment(CENTER);
         }
 
-        alarmTable.getColumnModel().getColumn(AlarmTableModel.ALARM)
-            .setCellRenderer(new AlarmNumRenderer());
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int col) {
+
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
+
+            setColBackground(this, row);
+            if (font != null) {
+                setFont(font);
+            }
+
+            return this;
+        }
     }
 
     /**
-     * Setup and initialise the TIME table column
+     * The PROGRESS column paints the alarm's own progress bar
      */
-    public void initTimeCol() {
+    private class ProgressRenderer implements TableCellRenderer {
 
-        class TimeRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int col) {
 
-            public TimeRenderer() {
-                setHorizontalAlignment(CENTER);
-            }
-
-            public Component getTableCellRendererComponent(JTable table,
-                    Object value, boolean isSelected, boolean hasFocus,
-                    int row, int col) {
-
-                setColBackground(this, row);
-
-                return super.getTableCellRendererComponent(table, value,
-                    isSelected, hasFocus, row, col);
-            }
+            return alarmTableModel.getAlarm(row).getProgressBar();
         }
-
-        alarmTable.getColumnModel().getColumn(AlarmTableModel.TIME)
-            .setCellRenderer(new TimeRenderer());
     }
 
     /**
-     * Setup and initialise the PROGRESS table column
+     * The ACTIVE column renders as a centred check box
      */
-    public void initProgressCol() {
+    private class ActiveRenderer implements TableCellRenderer {
 
-        class ProgressRenderer implements TableCellRenderer {
+        private final JCheckBox checkBox = new JCheckBox();
 
-            public Component getTableCellRendererComponent(JTable table,
-                    Object value, boolean isSelected, boolean hasFocus,
-                    int row, int col) {
-
-                Alarm alarm = alarmTableModel.getAlarm(row);
-
-                return alarm.getProgressBar();
-            }
+        ActiveRenderer() {
+            checkBox.setHorizontalAlignment(JCheckBox.CENTER);
         }
 
-        alarmTable.getColumnModel().getColumn(AlarmTableModel.PROGRESS)
-            .setCellRenderer(new ProgressRenderer());
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int col) {
+
+            setColBackground(checkBox, row);
+            checkBox.setSelected((Boolean) value);
+
+            return checkBox;
+        }
     }
 
     /**
-     * Setup and initialise the DESCRIPTION table column
-     */
-    public void initDescriptionCol() {
-
-        class DescriptionRenderer extends DefaultTableCellRenderer {
-
-            public DescriptionRenderer() {
-                setHorizontalAlignment(CENTER);
-            }
-
-            public Component getTableCellRendererComponent(JTable table,
-                    Object value, boolean isSelected, boolean hasFocus,
-                    int row, int col) {
-
-                setColBackground(this, row);
-
-                return super.getTableCellRendererComponent(table, value,
-                    isSelected, hasFocus, row, col);
-            }
-        }
-
-        alarmTable.getColumnModel().getColumn(AlarmTableModel.DESCRIPTION)
-            .setCellRenderer(new DescriptionRenderer());
-    }
-
-    /**
-     * Setup and initialise the ACTIVE table column
-     */
-    public void initActiveCol() {
-
-        class ActiveRenderer implements TableCellRenderer {
-
-            private final JCheckBox checkBox = new JCheckBox();
-
-            public ActiveRenderer() {
-                checkBox.setHorizontalAlignment(JCheckBox.CENTER);
-            }
-
-            public Component getTableCellRendererComponent(JTable table,
-                    Object value, boolean isSelected, boolean hasFocus,
-                    int row, int col) {
-
-                setColBackground(checkBox, row);
-                checkBox.setSelected((Boolean) value);
-
-                return checkBox;
-            }
-        }
-
-        alarmTable.getColumnModel().getColumn(AlarmTableModel.ACTIVE)
-            .setCellRenderer(new ActiveRenderer());
-    }
-
-    /**
-     * Setup and initialise the time display in status bar
+     * Setup and initialise the time display in status bar.
+     * A javax.swing.Timer fires on the event dispatch thread, so the label can
+     * be updated directly.
      */
     private void setTimeDisplay() {
-
-        final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm.ss");
-
-        class ClockTask extends TimerTask {
-
-            public void run() {
-                SwingUtilities.invokeLater(new Runnable() {
-                    public void run() {
-                        statusBar.setText("Time: " + dateFormat.format(new Date()));
-                    }
-                });
-            }
-        }
 
         // pad so text isn't clipped by the macOS rounded window corners
         statusBar.setBorder(BorderFactory.createEmptyBorder(2, 10, 4, 10));
@@ -354,10 +267,18 @@ public class MultiAlarmsGUI extends JFrame {
         // Timer below only fires after construction, so without this the status
         // bar would be empty at pack() time and reserve too little height -- the
         // grid would then be squeezed when the time first appears.
-        statusBar.setText("Time: " + dateFormat.format(new Date()));
+        statusBar.setText(clockText());
 
         contentPane.add(statusBar, BorderLayout.SOUTH);
-        clockTimer.schedule(new ClockTask(), 0, CLOCK_UPDATE_INTERVAL);
+
+        clockTimer = new Timer(CLOCK_UPDATE_INTERVAL, e -> statusBar.setText(clockText()));
+        clockTimer.setInitialDelay(0);
+        clockTimer.start();
+    }
+
+    /** Current time, as rendered in the status bar */
+    private static String clockText() {
+        return "Time: " + LocalTime.now().format(CLOCK_FORMAT);
     }
 
     // -------------------------------------------------------------------------
@@ -370,6 +291,7 @@ public class MultiAlarmsGUI extends JFrame {
         super.processWindowEvent(e);
 
         if (e.getID() == WindowEvent.WINDOW_CLOSING) {
+            clockTimer.stop();
             alarmTableModel.stopTimers();
             System.exit(0);
         }

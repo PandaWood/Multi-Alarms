@@ -1,7 +1,6 @@
 package multialarms;
 
 import java.awt.*;
-import java.awt.event.ActionEvent;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -94,12 +93,7 @@ public class AboutDialog extends JDialog {
         JPanel  southPanel  = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton closeButton = new JButton("Close");
 
-        closeButton.addActionListener(new java.awt.event.ActionListener() {
-
-            public void actionPerformed(ActionEvent e) {
-                AboutDialog.this.dispose();
-            }
-        });
+        closeButton.addActionListener(e -> dispose());
         southPanel.add(closeButton, null);
         mainPanel.add(southPanel, BorderLayout.SOUTH);
     }

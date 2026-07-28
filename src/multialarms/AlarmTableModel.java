@@ -5,10 +5,8 @@ package multialarms;
  * Description:  The Alarm JTable's TableModel implementation (handles data)
  * @author       Peter van der Woude
  */
- 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
+import javax.swing.JProgressBar;
 import javax.swing.Timer;
 import javax.swing.table.AbstractTableModel;
 
@@ -57,91 +55,80 @@ class AlarmTableModel extends AbstractTableModel {
 
         progressTimer.stop();
 
-        for (int x = 0; x < NUM_ALARMS; x++) {
-            alarms[x].stop();
+        for (Alarm alarm : alarms) {
+            alarm.stop();
         }
     }
 
+    @Override
     public int getColumnCount() {
         return columnNames.length;
     }
 
+    @Override
     public int getRowCount() {
         return alarms.length;
     }
 
+    @Override
     public String getColumnName(int col) {
         return columnNames[col];
     }
 
     /** Alarm table implementation of getValueAt */
+    @Override
     public Object getValueAt(int row, int col) {
 
-        Object obj   = null;
-        Alarm  alarm = alarms[row];
+        Alarm alarm = alarms[row];
 
-        switch (col) {
-
-        case ALARM :
-            obj = alarm.getAlarmNum();
-            break;
-
-        case DESCRIPTION :
-            obj = alarm.getDescription();
-            break;
-
-        case TIME :
-            obj = alarm.getTimeString();
-            break;
-
-        case ACTIVE :
-            obj = alarm.getActive();
-            break;
-        }
-
-        return obj;
+        return switch (col) {
+            case ALARM       -> alarm.getAlarmNum();
+            case DESCRIPTION -> alarm.getDescription();
+            case TIME        -> alarm.getTimeString();
+            case ACTIVE      -> alarm.isActive();
+            default          -> null;    // PROGRESS is painted by its own renderer
+        };
     }
 
-    public Class getColumnClass(int c) {
-        return getValueAt(0, c).getClass();
+    /**
+     * Declared explicitly rather than derived from getValueAt(0, col), which
+     * returns null for the PROGRESS column.
+     */
+    @Override
+    public Class<?> getColumnClass(int col) {
+
+        return switch (col) {
+            case ALARM    -> Integer.class;
+            case ACTIVE   -> Boolean.class;
+            case PROGRESS -> JProgressBar.class;
+            default       -> String.class;
+        };
     }
 
     /** Alarm table implementation of isCellEditable */
+    @Override
     public boolean isCellEditable(int row, int col) {
 
         if ((col == TIME) || (col == DESCRIPTION)) {
 
             // only allow editing if alarm not set
-            Alarm   alarm       = alarms[row];
-            boolean alarmActive =
-                    alarm.getActive();
-
-            if (!alarmActive) {
-                return true;
-            }
+            return !alarms[row].isActive();
         }
 
         return col == ACTIVE;
     }
 
     /** Alarm table implementation of setValueAt */
+    @Override
     public void setValueAt(Object value, int row, int col) {
 
         Alarm alarm = alarms[row];
 
         switch (col) {
-
-        case DESCRIPTION :
-            alarm.setDescription((String) value);
-            break;
-
-        case TIME :
-            alarm.setTimeString((String) value);
-            break;
-
-        case ACTIVE :
-            alarm.setActive((Boolean) value);
-            break;
+            case DESCRIPTION -> alarm.setDescription((String) value);
+            case TIME        -> alarm.setTimeString((String) value);
+            case ACTIVE      -> alarm.setActive((Boolean) value);
+            default          -> { }
         }
 
         if (col == ACTIVE) {    // update the highlighted state of row
@@ -154,25 +141,23 @@ class AlarmTableModel extends AbstractTableModel {
     /** Take manual control of updating the progress bar using a timer */
     private void startProgressTimer() {
 
-        progressTimer = new Timer(PROGRESS_INTERVAL, new ActionListener() {
+        progressTimer = new Timer(PROGRESS_INTERVAL, evt -> {
 
-            public void actionPerformed(ActionEvent evt) {
+            // for each alarm, check if active.
+            for (int row = 0; row < alarms.length; row++) {
 
-                // for each alarm, check if active.
-                for (int x = 0; x < alarms.length; x++) {
+                if (!alarms[row].isActive()) {
+                    continue;
+                }
 
-                    if (alarms[x].getActive().equals(Boolean.TRUE)) {
+                // update the progress bar and fire event to repaint it
+                alarms[row].updateProgressBar();
+                fireTableCellUpdated(row, PROGRESS);
 
-                        // update the progress bar and fire event to repaint it
-                        alarms[x].updateProgressBar();
-                        fireTableCellUpdated(x, PROGRESS);
-
-                        // if alarm has gone off, update the whole row so it can
-                        // can be re-painted the 'gone off' colour
-                        if (alarms[x].getGoneOff()) {
-                            fireTableRowsUpdated(x, x);
-                        }
-                    }
+                // if alarm has gone off, update the whole row so it can
+                // be re-painted the 'gone off' colour
+                if (alarms[row].getGoneOff()) {
+                    fireTableRowsUpdated(row, row);
                 }
             }
         });

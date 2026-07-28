@@ -5,9 +5,12 @@
 #   make run        build and launch the GUI
 #   make clean      remove build output
 
-JAVAC      := javac
-JAR        := jar
-JAVA       := java
+# Requires JDK 17 or later. Uses javac/jar/java from PATH; set JAVA_HOME to
+# build against a specific JDK instead:  make JAVA_HOME=/path/to/jdk
+JDK_BIN    := $(if $(JAVA_HOME),$(JAVA_HOME)/bin/,)
+JAVAC      := $(JDK_BIN)javac
+JAR        := $(JDK_BIN)jar
+JAVA       := $(JDK_BIN)java
 
 SRC_DIR    := src
 RES_DIR    := res
@@ -25,10 +28,7 @@ SOURCES    := $(shell find $(SRC_DIR) -name '*.java')
 RES_NAMES  := alarm.au bell.gif bell_white.gif splash.png
 RES_DST    := $(addprefix $(PKG_DIR)/,$(RES_NAMES)) $(PKG_DIR)/multialarms.properties
 
-# --release 11: lifted from 8 to gain java.awt.Desktop.setAboutHandler
-# (Java 9+) used for the macOS application "About" menu integration.
-# Java 8 is EOL anyway; 11 is the lowest LTS.
-JAVAC_FLAGS := -encoding UTF-8 --release 11
+JAVAC_FLAGS := -encoding UTF-8 --release 17
 
 .PHONY: all jar compile clean run
 
