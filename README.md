@@ -8,7 +8,7 @@ Each alarm counts down and plays a sound to alert the user.
 
 ## Background
 I wrote MultiAlarms in 2002 for a cinema projectionist who needed multiple alarms in order to keep 
-track of multiple cinema movies stopping and starting - since his job was dealing with film reels in a theatre with 5 screens.
+track of movies - since his job was changing reels in a cinema complex with 5 theatres.
 
 I then found the software generally useful but it lay forgotten in the code-cupboard of my machine as I moved on to other things.
 So I've created this repository for posterity.
